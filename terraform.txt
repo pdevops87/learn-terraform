@@ -1,0 +1,120 @@
+IaC:
+----
+Infrastructure as Code (IaC) is used to define and manage infrastructure such as servers, networks, and databases. Earlier, this was done manually, but with IaC we write configuration files in a machine-readable format instead of configuring everything by hand.
+
+With IaC, your infrastructure becomes:
+
+Automated – deployments happen through code execution
+
+Consistent – no manual mistakes or “it works on my machine”
+
+Version-controlled – stored in Git like software code
+
+Repeatable – recreate environments anytime (dev → test → prod)
+
+file:
+----
+resource "aws_instance" "web" {
+  ami           = "ami-123456"
+  instance_type = "t2.micro"
+}
+this file defines a server .Running terraform o create it.
+
+imperative and declarative:
+===========================
+Imperative means describing the steps to reach the goal.
+Declarative means describing the desired end state without specifying the steps or order.
+Provider:
+=========
+In Terraform, a provider is a plugin that allows Terraform to communicate with a specific platform or service — such as AWS, Azure, Google Cloud, VMware, GitHub, etc.
+A provider is a plugin that Terraform uses to interact with a specific cloud or service (like AWS or Azure).
+Users supply inputs in HCL → the provider translates those inputs into API calls → AWS/Azure/GCP create the resources.
+Your HCL Inputs  →  Terraform Engine  →  Provider Plugin  →  AWS/Azure API
+
+
+1.Terraform is a tool
+2.HCL is a hashicorp language to write the code for terraform tool
+3.Terraform is used to create the infrastructure and managing the servers
+
+
+ls -A
+ls .terraform
+
+
+IAM role:
+=========
+Terraform is a tool that can create a server or VM or nodes (infrastructure) , aws provides the permission (sts:Assumerole).
+iam role grants the permission to create a service in an aws service
+Terraform wants to create resources (e.g., EC2).
+
+Terraform assumes an IAM role (permission granted via sts:AssumeRole).
+
+The role’s policies allow Terraform to perform actions on AWS services (like creating EC2, S3, etc.).
+
+Trust Policy:
+=============
+{
+  "Effect": "Allow",
+  "Principal": {
+    "Service": "ec2.amazonaws.com"
+  },
+  "Action": "sts:AssumeRole"
+}
+
+Permission Policy:
+=================
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
+"trust and permission policy both are different"
+
+Role = toolbox
+Trust policy = who is allowed to pick up the toolbox (EC2 service, Terraform, user)
+Permissions policy = the tools inside the toolbox (create EC2 instances, access S3, etc.)
+Assuming a role means that a principal (user, EC2 instance, Lambda, Terraform, etc.) temporarily takes on the permissions defined in the
+
+1. create an iam role
+
+2.attach trust policy to iam role
+
+Specifies who (the principal) can assume the role.
+Example: EC2 service (ec2.amazonaws.com).
+
+3. attach permission policy to iam role
+
+Defines what actions the role can perform once assumed.
+Example: ec2:RunInstances, ec2:TerminateInstances.
+
+4.trust policy(principal) allows sts:AssumeRole
+Grants the principal the ability to temporarily assume the role.
+
+5. Assume role means permissions defined in permission policy what actions to be performed
+When the principal assumes the role, it temporarily gets the permissions defined in the role’s permission policy.
+
+Only the actions in the permission policy can be performed; nothing else.
+
+
+
+install terraform:
+==================
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+sudo yum -y install terraform
+resource "<PROVIDER>_<RESOURCE_TYPE>" "<RESOURCE_LABEL>" {
+  # configuration
+}
+* provider is a plugin to interact with cloud services like aws ,azure,...
+* our service is aws
+* here provider interacts with aws service
+provider provides resource block,resource types like aws_instance and resource labels(provided by end users)
