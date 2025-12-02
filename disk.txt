@@ -1,0 +1,114 @@
+CIS:Center for Internet Security
+===================================
+
+| Directory             | CIS Reason                                      | Typical Use        |
+| --------------------- | ----------------------------------------------- | ------------------ |
+| **/home**             | Prevent user files from filling root filesystem | User data          |
+| **/var**              | Contains logs & variable data                   | System logs, spool |
+| **/var/log**          | Protect log integrity                           | Logging            |
+| **/var/log/audit**    | Protect audit logs                              | Audit daemon logs  |
+| **/tmp**              | Temporary file storage, must be nosuid/noexec   | App temp files     |
+| **/var/tmp**          | Persistent temp files (same as /tmp)            | Temp storage       |
+| **/srv** *(optional)* | For system-provided services                    | Web, FTP, etc.     |
+| **/opt** *(optional)* | Optional third-party software                   | Applications       |
+
+
+✔ /tmp is on its own partition
+✔ /var/tmp is mounted separately or symlinked to /tmp
+✔ /var is separate
+✔ /var/log is separate
+✔ /var/log/audit is separate
+✔ /home is separate
+
+
+once we update the ebs volume for ec2 instances then we need to check by using this command
+sudo "lsblk" : total ebs volume storage
+check vgs
+$ vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  vg0      1   2   0 wz--n- <100.00g 20.00g
+Meaning:
+
+VG – Volume group name (vg0)
+#PV – Number of disks/partitions in the VG
+#LV – Number of logical volumes
+Attr – VG attributes
+VSize – Total size
+VFree – Free space available
+
+LVM Structure Overview:
+========================
+Physical Volumes (PV)  →  Volume Groups (VG)  →  Logical Volumes (LV)
+     /dev/sdb                 vg0                   lv_root
+
+Command	         Description
+--------         ------------
+pvs          	Shows physical volumes
+vgs	            Shows volume groups
+lvs	            Shows logical volumes
+vgcreate	    Create a volume group
+vgextend	    Add PV to a VG
+lvcreate	    Create a logical volume
+
+
+
+*** nvme0n1 = Physical Disk (PV candidate)
+It is a physical storage device — the raw disk provided by AWS (EBS volume).
+ex: /dev/nvme0n1
+This can become a Physical Volume (PV) for LVM
+
+*** Logical Volume (LV) = Virtual partition created inside LVM
+Logical Volumes live inside a Volume Group, not directly on the disk.
+
+ex:
+/dev/vg0/root
+/dev/mapper/vg0-lv_home
+/dev/mapper/ubuntu--vg-ubuntu--lv
+These are NOT physical disks — they are virtual storage areas based on LVM.
+
+
+LVM Structure Diagram(Logical Volume Manager)
+=============================================
+Physical Disk
+   |
+   v
+Physical Volume (PV)
+/dev/nvme0n1
+   |
+   v
+Volume Group (VG)
+vg0
+   |
+   v
+Logical Volumes (LV)
+/dev/vg0/root
+/dev/vg0/home
+/dev/vg0/var
+
+
+If LVM is used, lsblk looks like:
+
+nvme0n1      100G  disk
+└─nvme0n1p1   100G  part
+   └─vg0-root  80G  lvm  /
+   └─vg0-home  20G  lvm  /home
+
+
+Here:
+
+nvme0n1 = physical disk
+
+nvme0n1p1 = physical partition
+
+vg0 = volume group
+
+vg0-root, vg0-home = logical volumes
+
+
+EBS Volume: /dev/nvme0n1
+  └─ Partition: /dev/nvme0n1p1
+       └─ PV → pvcreate /dev/nvme0n1p1
+           └─ VG → vgcreate vg0 /dev/nvme0n1p1
+               ├─ LV root → /dev/mapper/vg0-root → mounted at /
+               └─ LV home → /dev/mapper/vg0-home → mounted at /home
+
