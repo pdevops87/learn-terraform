@@ -45,7 +45,7 @@ variable "val"{
   default = {name="xxx",age=17}
 }
 output "val" {
-  value = var.val["a"]
+  value = var.val["name"]
 }
 # any
 # if type is any then end user should pass any type of value
