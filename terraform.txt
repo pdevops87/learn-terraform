@@ -143,7 +143,6 @@ here two problems:
 if provisioner not able to run properly in an instance then it resources will destroy and recreate.
 2.once instance creation and provisioner execution completes then only next resource will create.
 
-
 cloud-init:
 -----------
 /etc/cloud/cloud.cfg
