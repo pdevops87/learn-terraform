@@ -39,73 +39,6 @@ Your HCL Inputs  →  Terraform Engine  →  Provider Plugin  →  AWS/Azure API
 
 ls -A
 ls .terraform
-
-
-IAM role:
-=========
-Terraform is a tool that can create a server or VM or nodes (infrastructure) , aws provides the permission (sts:Assumerole).
-iam role grants the permission to create a service in an aws service
-Terraform wants to create resources (e.g., EC2).
-
-Terraform assumes an IAM role (permission granted via sts:AssumeRole).
-
-The role’s policies allow Terraform to perform actions on AWS services (like creating EC2, S3, etc.).
-
-Trust Policy:
-=============
-{
-  "Effect": "Allow",
-  "Principal": {
-    "Service": "ec2.amazonaws.com"
-  },
-  "Action": "sts:AssumeRole"
-}
-
-Permission Policy:
-=================
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:RunInstances",
-        "ec2:TerminateInstances"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-
-"trust and permission policy both are different"
-
-Role = toolbox
-Trust policy = who is allowed to pick up the toolbox (EC2 service, Terraform, user)
-Permissions policy = the tools inside the toolbox (create EC2 instances, access S3, etc.)
-Assuming a role means that a principal (user, EC2 instance, Lambda, Terraform, etc.) temporarily takes on the permissions defined in the
-
-1. create an iam role
-
-2.attach trust policy to iam role
-
-Specifies who (the principal) can assume the role.
-Example: EC2 service (ec2.amazonaws.com).
-
-3. attach permission policy to iam role
-
-Defines what actions the role can perform once assumed.
-Example: ec2:RunInstances, ec2:TerminateInstances.
-
-4.trust policy(principal) allows sts:AssumeRole
-Grants the principal the ability to temporarily assume the role.
-
-5. Assume role means permissions defined in permission policy what actions to be performed
-When the principal assumes the role, it temporarily gets the permissions defined in the role’s permission policy.
-
-Only the actions in the permission policy can be performed; nothing else.
-
-
-
 install terraform:
 ==================
 sudo yum install -y yum-utils
@@ -118,3 +51,105 @@ resource "<PROVIDER>_<RESOURCE_TYPE>" "<RESOURCE_LABEL>" {
 * our service is aws
 * here provider interacts with aws service
 provider provides resource block,resource types like aws_instance and resource labels(provided by end users)
+
+02-12-2025
+-----------
+static values:
+==============
+resource aws_instance "frontend"{
+ami="a312311"
+}
+avoid giving static value every time. to pass value as dynamic by using variable
+
+resource aws_instance "frontend"{
+ami = ""
+}
+resource aws_instance  "cart"{
+ami = ""
+}
+resource aws_instance "catalogue"{
+ami = ""
+}
+suppose to create n number of instances , keeping to write each and every resource independently is not a good, and it is a challenge work.
+to avoid this duplicate use count
+**resource aws_instance "components"{
+count = 5
+ami = ""
+}
+here count = 5 , to create number of resources as 5[ec2 instance]
+
+we can go for another loop as for_each
+
+resource aws_instance "components"{
+for_each = var.components
+ami = each/value["ami"]
+tags = {
+Name = each.key
+}
+}
+variable components{
+default = {
+frontend = t3.micro
+}
+}
+here variable components assign to for_each loop, here components is declared as map and call each pair as key and value.
+
+Provisioner:
+=============
+* provisioner is not loaded properly in specific resource that resource will taint and destroy a resource then recreate when we run terraform, so it tainted/replaced old instance to new instance
+Terraform destroys the old instance
+Terraform creates a new one
+The provisioner runs again on the new instance
+** suppose create a provisioner inside instance,and then next  create route53 records .
+** terraform will complete instance creation and connect to remote node through provisioner , once complete the execution then only route 53 records will create.
+** provisioner successfully completes does Terraform consider the resource “healthy” and stops replacing it.
+** Terraform does not track provisioner content as part of the resource state. means once script executes successfully when terraform creates a resource time, if we change any update terraform won't detect the changes in existing resource just display a message as "no changes in an Infrastructure"
+** provisioner run only one time,Terraform will NOT rerun the provisioner
+** Terraform does not track provisioner execution in the state. Once a provisioner successfully executes during resource creation, changing the script later will not update or rerun it. Only a tainted or replaced resource will rerun it.
+here state means: terraform.tfstate
+
+
+When we say “Terraform does not track provisioner execution in the state,” it means:
+=====================================================================================
+Terraform only tracks the resource itself in the state
+Terraform does not remember what the provisioner did
+Therefore, changes to the provisioner alone do not trigger updates
+
+ex:
+resource "aws_instance" "example" {
+  ami           = "ami-123456"
+  instance_type = "t2.micro"
+
+  provisioner "remote-exec" {
+    inline = ["echo 'Hello World'"]
+  }
+}
+terraform apply Hello World is the output
+
+resource "aws_instance" "example" {
+  ami           = "ami-123456"
+  instance_type = "t2.micro"
+
+  provisioner "remote-exec" {
+    inline = ["echo 'updated script'"]
+  }
+}
+terraform apply : No changes. Infrastructure is up-to-date.
+                  Provisioner does NOT run
+                  Instance stays the same
+here two problems:
+===================
+1.resources are tainted when we rerun to terraform, tainted means replace.
+if provisioner not able to run properly in an instance then it resources will destroy and recreate.
+2.once instance creation and provisioner execution completes then only next resource will create.
+
+
+cloud-init:
+-----------
+/etc/cloud/cloud.cfg
+* create an ec2 instances by using resource block
+* to create a multiple instance also by using resource block
+
+04-12-2025:
+-----------
+
